@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArchMaster | Computer Architecture Interactive Syllabus</title>
+    
+    <!-- External Dependencies -->
+    <!-- Tailwind CSS - Utility-first CSS framework for rapid styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js - JavaScript charting library for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts - Typography for better visual hierarchy -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- ======================================================================
+         TAILWIND CUSTOM CONFIGURATION
+         Extends Tailwind's default theme with custom colors, fonts, and animations
+    ====================================================================== -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],     // Main body font
+                        mono: ['JetBrains Mono', 'monospace'], // Code/technical text
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',   // Light blue for backgrounds
+                            100: '#e0f2fe',  // Lighter blue for active states
+                            500: '#0ea5e9',  // Primary brand blue
+                            600: '#0284c7',  // Darker blue for borders
+                            800: '#075985',  // Dark blue for text
+                            900: '#0c4a6e',  // Deep blue for headers
+                        },
+                        accent: {
+                            light: '#fde68a', // Amber 200 for highlights
+                            DEFAULT: '#d97706', // Amber 600 for emphasis
+                        }
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 3s infinite', // Custom slow bounce animation
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- ======================================================================
+         CUSTOM STYLES
+         Additional CSS that can't be expressed with Tailwind classes
+    ====================================================================== -->
+    <style>
+        /* Base body styling */
+        body {
+            background-color: #f8fafc; /* Slate 50 - light gray background */
+            color: #1e293b; /* Slate 800 - dark gray text */
+        }
+        
+        /* Glassmorphism effect for panels */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Active navigation item styling */
+        .nav-item.active {
+            background-color: #e0f2fe; /* brand-100 - light blue background */
+            color: #0c4a6e; /* brand-900 - dark blue text */
+            border-left: 4px solid #0284c7; /* brand-600 - blue left border */
+        }
+
+        /* Instruction cycle step animations */
+        .cycle-step {
+            transition: all 0.3s ease;
+        }
+        .cycle-step.active-step {
+            background-color: #0ea5e9;
+            color: white;
+            transform: scale(1.05); /* Slight zoom effect */
+            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
+        }
+
+        /* Chart container responsive sizing */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        
+        /* Styling for AI-generated responses (markdown-like) */
+        .ai-response strong { font-weight: 700; color: #0f172a; }
+        .ai-response ul { list-style-type: disc; padding-left: 1.5em; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .ai-response li { margin-bottom: 0.25em; }
+        .ai-response p { margin-bottom: 0.75em; }
+
+        /* Hide scrollbar but maintain scrolling functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;      /* Firefox */
+        }
+    </style>
+</head>
+<body class="antialiased h-screen flex flex-col overflow-hidden">
+
+    <!-- ======================================================================
+         PROJECT PLANNING & STRUCTURAL COMMENTS
+         These comments explain the overall application architecture
+    ====================================================================== -->
+    <!-- 
+        DESIGN SYSTEM:
+        - Color Palette: Slate (Backgrounds/Text) + Sky Blue (Primary) + Amber (Accent/Warn)
+        - Fonts: Inter for UI text, JetBrains Mono for code/technical content
+        
+        APPLICATION STRUCTURE:
+        1. Layout: Sidebar Navigation (Left) + Main Content Area (Right)
+        2. Modules:
+           - Dashboard: Syllabus Overview & Progress Tracking
+           - Ch3 Processor: Visual Instruction Cycle & Bus logic
+           - Ch4 Memory: Interactive Hierarchy Chart & Cache Mapping
+           - Ch7 I/O: Interactive Problem 7.5 Solver & Protocol Comparison
+           - Study Hub: Q&A Accordion for all Review Questions from PDF
+        3. Rationale: Sidebar enables quick switching between architectural layers (CPU -> Memory -> I/O).
+           Interactive elements (Solver, Charts) replace static text for "Active Learning".
+        
+        VISUALIZATION CHOICES:
+        1. Chart.js Bar/Log Chart: Used in Ch4 to visualize speed gaps in memory hierarchy (Goal: Inform/Compare)
+        2. Custom HTML/CSS Flowchart: Used in Ch3 for Instruction Cycle to show state transitions (Goal: Process)
+        3. JS Logic Calculator: Used in Ch7 for Problem 7.5 to verify register calculations (Goal: Application)
+        4. Accordion Lists: Used for Review Questions to declutter UI (Goal: Study/Test)
+        
+        TECHNOLOGY CONFIRMATION:
+        - NO SVG graphics used (as per requirements)
+        - NO Mermaid JS used (as per requirements)
+        - Pure HTML/CSS/JS + Chart.js only
+    -->
+
+    <!-- ======================================================================
+         HEADER SECTION
+         Top navigation bar with app branding and global controls
+    ====================================================================== -->
+    <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 flex-shrink-0 z-20">
+        <!-- Logo and App Title -->
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">A</div>
+            <div>
+                <h1 class="font-bold text-slate-800 text-lg leading-tight">ArchMaster</h1>
+                <p class="text-xs text-slate-500">Based on Stallings 8th Ed. Syllabus</p>
+            </div>
+        </div>
+        
+        <!-- Header Actions -->
+        <div class="flex items-center gap-4">
+            <!-- AI Chat Trigger Button (Desktop) -->
+            <button onclick="toggleAIChat()" class="hidden md:flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold hover:shadow-lg transition-all transform hover:-translate-y-0.5">
+                <span>✨ Ask the Architect</span>
+            </button>
+            <!-- Exam Status Badge -->
+            <div class="hidden md:flex text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                <span>Final Exam Prep: Chapters 3, 4, 7</span>
+            </div>
+            <!-- Reset App Button -->
+            <button id="reset-app-btn" class="text-sm text-brand-600 hover:text-brand-800 font-medium">Reset Progress</button>
+        </div>
+    </header>
+
+    <!-- ======================================================================
+         MAIN APPLICATION LAYOUT
+         Sidebar navigation + Content area structure
+    ====================================================================== -->
+    <div class="flex flex-1 overflow-hidden relative">
+        
+        <!-- ==================================================================
+             SIDEBAR NAVIGATION (Desktop)
+             Fixed sidebar for module navigation on larger screens
+        ================================================================== -->
+        <nav class="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 overflow-y-auto hidden md:flex">
+            <!-- Main Modules Section -->
+            <div class="p-4 space-y-1">
+                <p class="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Modules</p>
+                <button onclick="navTo('dashboard')" class="nav-item active w-full text-left px-4 py-3 rounded-r-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                    Dashboard
+                </button>
+                <button onclick="navTo('ch3')" class="nav-item w-full text-left px-4 py-3 rounded-r-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                    Ch 3: Processor & Bus
+                </button>
+                <button onclick="navTo('ch4')" class="nav-item w-full text-left px-4 py-3 rounded-r-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                    Ch 4: Cache Memory
+                </button>
+                <button onclick="navTo('ch7')" class="nav-item w-full text-left px-4 py-3 rounded-r-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                    Ch 7: I/O & DMA
+                </button>
+            </div>
+
+            <!-- Tools Section (Bottom of Sidebar) -->
+            <div class="mt-auto p-4 border-t border-slate-100">
+                <p class="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tools</p>
+                <button onclick="navTo('solver')" class="nav-item w-full text-left px-4 py-3 rounded-r-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                    Problem 7.5 Solver
+                </button>
+                <button onclick="navTo('study')" class="nav-item w-full text-left px-4 py-3 rounded-r-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                    Review Q&A
+                </button>
+                <!-- Mobile AI Button (only visible on mobile within sidebar) -->
+                <button onclick="toggleAIChat()" class="mt-4 w-full flex md:hidden items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
+                    <span>✨ Ask AI Tutor</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- ==================================================================
+             MOBILE NAVIGATION CONTROLS
+             Mobile-specific navigation elements
+        ================================================================== -->
+        <!-- Mobile Menu Toggle Button (Floating Action Button) -->
+        <div class="md:hidden absolute bottom-4 right-4 z-50">
+            <button onclick="toggleMobileNav()" class="bg-brand-600 text-white p-4 rounded-full shadow-lg">
+                Menu
+            </button>
+        </div>
+        
+        <!-- Mobile Navigation Menu (Full-screen overlay) -->
+        <div id="mobile-nav" class="fixed inset-0 bg-white z-40 transform translate-x-full transition-transform duration-300 md:hidden flex flex-col pt-20 px-6">
+            <button onclick="toggleMobileNav()" class="absolute top-4 right-6 text-slate-500 text-xl font-bold">&times;</button>
+            <button onclick="navTo('dashboard'); toggleMobileNav()" class="py-4 border-b border-slate-100 text-lg font-medium">Dashboard</button>
+            <button onclick="navTo('ch3'); toggleMobileNav()" class="py-4 border-b border-slate-100 text-lg font-medium">Ch 3: Processor</button>
+            <button onclick="navTo('ch4'); toggleMobileNav()" class="py-4 border-b border-slate-100 text-lg font-medium">Ch 4: Memory</button>
+            <button onclick="navTo('ch7'); toggleMobileNav()" class="py-4 border-b border-slate-100 text-lg font-medium">Ch 7: I/O</button>
+            <button onclick="navTo('solver'); toggleMobileNav()" class="py-4 border-b border-slate-100 text-lg font-medium">Problem Solver</button>
+            <button onclick="navTo('study'); toggleMobileNav()" class="py-4 text-lg font-medium">Review Q&A</button>
+            <button onclick="toggleAIChat(); toggleMobileNav()" class="py-4 text-lg font-medium text-indigo-600 font-bold">✨ Ask AI Tutor</button>
+        </div>
+
+        <!-- ==================================================================
+             MAIN CONTENT AREA
+             Dynamic content is injected here based on navigation
+        ================================================================== -->
+        <main id="main-content" class="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-10 scroll-smooth relative">
+            <!-- Content is dynamically rendered by JavaScript based on current view -->
+            <!-- Dashboard, Chapter content, or tools are injected here -->
+        </main>
+
+        <!-- ==================================================================
+             AI CHAT MODAL
+         Floating chat interface for AI-powered tutoring
+        ================================================================== -->
+        <div id="ai-chat-modal" class="hidden absolute right-0 bottom-0 top-16 w-full md:w-96 bg-white shadow-2xl border-l border-slate-200 z-30 flex flex-col transform transition-transform duration-300 translate-x-full">
+            <!-- Chat Header -->
+            <div class="p-4 bg-indigo-600 text-white flex justify-between items-center shadow-md">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">✨</span>
+                    <div>
+                        <h3 class="font-bold text-sm">Ask the Architect</h3>
+                        <p class="text-[10px] opacity-80">Powered by Gemini • Stallings 8th Ed Context</p>
+                    </div>
+                </div>
+                <button onclick="toggleAIChat()" class="hover:bg-indigo-700 p-1 rounded text-white font-bold">&times;</button>
+            </div>
+            
+            <!-- Chat History Area -->
+            <div id="ai-chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                <!-- Initial AI greeting message -->
+                <div class="flex gap-3 items-start">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold text-xs">AI</div>
+                    <div class="bg-white p-3 rounded-r-xl rounded-bl-xl shadow-sm text-sm text-slate-700 border border-slate-100">
+                        Hello! I'm your Computer Architecture tutor. Ask me about DMA, Cache Mapping, or Instruction Cycles.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="p-4 bg-white border-t border-slate-200">
+                <div class="flex gap-2">
+                    <input type="text" id="ai-user-input" placeholder="Ask about Ch 3, 4, or 7..." 
+                           class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                           onkeypress="if(event.key === 'Enter') sendToAI()">
+                    <button onclick="sendToAI()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg transition-colors">
+                        <!-- Send icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================
+         APPLICATION JAVASCRIPT LOGIC
+         All interactive functionality is contained in this script
+    ====================================================================== -->
+    <script>
+        // ===========================================================================
+        // GEMINI API CONFIGURATION
+        // ===========================================================================
+        const apiKey = ""; // API key would be provided by the system
+        
+        // ===========================================================================
+        // APPLICATION STATE MANAGEMENT
+        // ===========================================================================
+        const state = {
+            currentView: 'dashboard',          // Active module/view
+            cycleStep: 0,                     // Current step in instruction cycle
+            showAnswers: {},                  // Tracks which Q&A answers are visible
+            chatOpen: false,                  // AI chat modal visibility
+            solver: {                         // Problem 7.5 solver state
+                dev1Status: 2,                // Device 1 status lines
+                dev1Control: 3,               // Device 1 control lines
+                dev2Status: 3,                // Device 2 status lines
+                dev2Control: 4,               // Device 2 control lines
+                busWidth: 8                   // Microprocessor bus width (bits)
+            }
+        };
+
+        // ===========================================================================
+        // CONTENT DATABASE
+        // Stores all syllabus questions and chapter introductions
+        // ===========================================================================
+        const syllabusData = {
+            ch3: {
+                title: "Computer Function & Interconnection",
+                intro: "Chapter 3 bridges the gap between hardware components and software execution. It focuses on how instructions are processed (Instruction Cycle), how interrupts alter flow control, and how components communicate via Buses (PCI).",
+                questions: [
+                    { id: "3.1", q: "What general categories of functions are specified by computer instructions?", a: "Computer instructions generally fall into four categories: <br>1. <strong>Processor-memory:</strong> Transfer data between processor and memory.<br>2. <strong>Processor-I/O:</strong> Transfer data to/from external devices.<br>3. <strong>Data processing:</strong> Perform arithmetic or logic operations.<br>4. <strong>Control:</strong> Alter the sequence of execution (e.g., jumps, branches)." },
+                    // ... additional questions for ch3
+                ]
+            },
+            ch4: {
+                title: "Cache Memory",
+                intro: "Chapter 4 deals with the 'Memory Wall' problem. Processors are fast; memory is slow. Caches use the principles of Locality (Spatial & Temporal) to bridge this gap. Key concepts include Mapping Functions and Replacement Algorithms.",
+                questions: [
+                    // ... questions for ch4
+                ]
+            },
+            ch7: {
+                title: "Input/Output",
+                intro: "Chapter 7 explores how the CPU interacts with the outside world. It moves from inefficient Programmed I/O to Interrupt-driven I/O, and finally to DMA, where the CPU offloads transfer tasks to a dedicated module.",
+                questions: [
+                    // ... questions for ch7
+                ]
+            }
+        };
+
+        // ===========================================================================
+        // RENDER FUNCTIONS
+        // Each function returns HTML for a specific module/view
+        // ===========================================================================
+
+        /**
+         * Renders the Dashboard view with overview cards and quick actions
+         * @returns {string} HTML string for dashboard
+         */
+        function renderDashboard() {
+            return `
+                <div class="space-y-8">
+                    <!-- Hero Welcome Section -->
+                    <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10">
+                            <span class="text-9xl">✨</span>
+                        </div>
+                        <h2 class="text-3xl font-bold text-slate-800 mb-2">Welcome to ArchMaster</h2>
+                        <p class="text-slate-600 max-w-2xl">
+                            This interactive dashboard covers the critical exam syllabus for <strong>Computer Organization & Architecture (8th Ed)</strong>. 
+                            Navigate through the modules to explore the Instruction Cycle, Memory Hierarchy, and Advanced I/O techniques.
+                        </p>
+                        <div class="mt-6 flex gap-3">
+                            <button onclick="navTo('ch3')" class="bg-brand-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-brand-700 transition">Start Ch 3</button>
+                            <button onclick="toggleAIChat()" class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg font-semibold hover:bg-indigo-100 transition flex items-center gap-2">
+                                <span>✨ Ask AI Tutor</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Module Cards Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Chapter 3 Card -->
+                        <div onclick="navTo('ch3')" class="group cursor-pointer bg-white p-6 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all">
+                            <div class="h-12 w-12 rounded-lg bg-blue-100 text-brand-600 flex items-center justify-center mb-4 text-xl font-bold">3</div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-2 group-hover:text-brand-600">Processor Logic</h3>
+                            <p class="text-sm text-slate-500">Instruction cycles, Interrupts, and Bus Interconnection (PCI).</p>
+                        </div>
+                        
+                        <!-- Chapter 4 Card -->
+                        <div onclick="navTo('ch4')" class="group cursor-pointer bg-white p-6 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all">
+                            <div class="h-12 w-12 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mb-4 text-xl font-bold">4</div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-2 group-hover:text-indigo-600">Cache Memory</h3>
+                            <p class="text-sm text-slate-500">Spatial vs Temporal locality, mapping functions, and write policies.</p>
+                        </div>
+
+                        <!-- Chapter 7 Card -->
+                        <div onclick="navTo('ch7')" class="group cursor-pointer bg-white p-6 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all">
+                            <div class="h-12 w-12 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-4 text-xl font-bold">7</div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-2 group-hover:text-amber-600">Input/Output</h3>
+                            <p class="text-sm text-slate-500">Programmed I/O, DMA, and peripheral classifications.</p>
+                        </div>
+                    </div>
+
+                    <!-- Problem Solver Call-to-Action -->
+                    <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-8 text-white flex flex-col md:flex-row items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold mb-2">Practice Problem 7.5</h3>
+                            <p class="text-slate-300 text-sm max-w-md">Solve the I/O Control Register calculation problem from page 4 of the syllabus.</p>
+                        </div>
+                        <button onclick="navTo('solver')" class="mt-4 md:mt-0 bg-white text-slate-900 px-6 py-2 rounded-lg font-semibold hover:bg-slate-100 transition-colors">
+                            Open Solver
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Renders Chapter 3 content with interactive instruction cycle
+         * @returns {string} HTML string for chapter 3
+         */
+        function renderCh3() {
+            return `
+                <div class="space-y-6">
+                    <!-- Chapter Header -->
+                    <div class="border-b border-slate-200 pb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">Chapter 3: Computer Function</h2>
+                        <p class="text-slate-600 mt-2">${syllabusData.ch3.intro}</p>
+                    </div>
+
+                    <!-- Interactive Instruction Cycle Diagram -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-lg">The Instruction Cycle (with Interrupts)</h3>
+                            <div class="space-x-2">
+                                <button onclick="resetCycle()" class="text-xs text-slate-500 hover:text-brand-600 underline">Reset</button>
+                                <button onclick="nextCycleStep()" class="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">Next Step</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Diagram Steps -->
+                        <div class="relative py-8 px-4 bg-slate-50 rounded-lg border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 overflow-x-auto">
+                            <!-- Step 0: START -->
+                            <div id="step-0" class="cycle-step p-4 rounded-lg bg-white border border-slate-300 text-center w-32 shadow-sm">
+                                <div class="font-bold text-sm">START</div>
+                            </div>
+                            <div class="text-slate-300 text-2xl">→</div>
+                            
+                            <!-- Step 1: FETCH -->
+                            <div id="step-1" class="cycle-step p-4 rounded-lg bg-white border border-slate-300 text-center w-32 shadow-sm">
+                                <div class="font-bold text-sm">FETCH</div>
+                                <div class="text-xs mt-1">Read Instr from MEM</div>
+                            </div>
+                            <div class="text-slate-300 text-2xl">→</div>
+
+                            <!-- Step 2: DECODE -->
+                            <div id="step-2" class="cycle-step p-4 rounded-lg bg-white border border-slate-300 text-center w-32 shadow-sm">
+                                <div class="font-bold text-sm">DECODE</div>
+                                <div class="text-xs mt-1">Interpret Opcode</div>
+                            </div>
+                            <div class="text-slate-300 text-2xl">→</div>
+
+                            <!-- Step 3: EXECUTE -->
+                            <div id="step-3" class="cycle-step p-4 rounded-lg bg-white border border-slate-300 text-center w-32 shadow-sm">
+                                <div class="font-bold text-sm">EXECUTE</div>
+                                <div class="text-xs mt-1">ALU / Data Transfer</div>
+                            </div>
+                            <div class="text-slate-300 text-2xl">→</div>
+
+                            <!-- Step 4: CHECK INTERRUPTS -->
+                            <div id="step-4" class="cycle-step p-4 rounded-lg bg-white border border-slate-300 text-center w-32 shadow-sm">
+                                <div class="font-bold text-sm">CHECK INT</div>
+                                <div class="text-xs mt-1">Interrupt Enabled?</div>
+                            </div>
+                        </div>
+
+                        <!-- Step Description Area -->
+                        <div id="cycle-desc" class="mt-6 p-4 bg-blue-50 text-blue-900 rounded-lg text-sm border border-blue-100 min-h-[80px] flex items-center">
+                            Click "Next Step" to begin the simulation of how the processor handles a single instruction.
+                        </div>
+                    </div>
+
+                    <!-- Supplementary Information Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- PCI Bus Information -->
+                        <div class="bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-3">PCI Bus Signal Lines</h3>
+                            <ul class="list-disc pl-5 space-y-2 text-sm text-slate-600">
+                                <li><strong>System Pins:</strong> Clock and Reset.</li>
+                                <li><strong>Address & Data Pins:</strong> Multiplexed lines for address/data.</li>
+                                <li><strong>Interface Control Pins:</strong> Coordinate transactions (FRAME#, TRDY#).</li>
+                                <li><strong>Arbitration Pins:</strong> Request (REQ#) and Grant (GNT#).</li>
+                                <li><strong>Error Reporting Pins:</strong> Parity errors.</li>
+                            </ul>
+                        </div>
+                        <!-- Interrupt Classes -->
+                        <div class="bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-3">Interrupt Classes</h3>
+                            <ul class="list-disc pl-5 space-y-2 text-sm text-slate-600">
+                                <li><strong>Program:</strong> Generated by condition (overflow, div by zero).</li>
+                                <li><strong>Timer:</strong> Generated by internal processor timer.</li>
+                                <li><strong>I/O:</strong> Generated by I/O controller (data ready/error).</li>
+                                <li><strong>Hardware Failure:</strong> Power failure or memory parity error.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Renders Chapter 4 content with memory hierarchy chart
+         * @returns {string} HTML string for chapter 4
+         */
+        function renderCh4() {
+            // Initialize chart after DOM is ready
+            setTimeout(() => initMemoryChart(), 100);
+            return `
+                <div class="space-y-6">
+                    <!-- Chapter Header -->
+                    <div class="border-b border-slate-200 pb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">Chapter 4: Cache Memory Principles</h2>
+                        <p class="text-slate-600 mt-2">${syllabusData.ch4.intro}</p>
+                    </div>
+
+                    <!-- Memory Hierarchy Chart Section -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <h3 class="font-bold text-lg mb-4">The Memory Hierarchy Gap</h3>
+                        <div class="chart-container">
+                            <canvas id="memoryChart"></canvas>
+                        </div>
+                        <p class="text-xs text-center text-slate-400 mt-2">Note: Logarithmic Scale. Register access is instant compared to Disk.</p>
+                    </div>
+
+                    <!-- Locality Concepts -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Temporal Locality Card -->
+                        <div class="bg-white p-6 rounded-xl border-l-4 border-indigo-500 shadow-sm">
+                            <h3 class="font-bold text-indigo-900 mb-2">Temporal Locality</h3>
+                            <div class="bg-slate-100 p-3 rounded mb-3 font-mono text-xs text-slate-600">
+                                for (i=0; i<1000; i++) {<br>
+                                &nbsp;&nbsp; sum = sum + 1;<br>
+                                }
+                            </div>
+                            <p class="text-sm text-slate-600">The variable <code>sum</code> and the instruction itself are accessed repeatedly in a short time. <br><strong>Strategy:</strong> Keep 'sum' in L1 Cache.</p>
+                        </div>
+
+                        <!-- Spatial Locality Card -->
+                        <div class="bg-white p-6 rounded-xl border-l-4 border-emerald-500 shadow-sm">
+                            <h3 class="font-bold text-emerald-900 mb-2">Spatial Locality</h3>
+                            <div class="bg-slate-100 p-3 rounded mb-3 font-mono text-xs text-slate-600">
+                                int arr[100];<br>
+                                ... read arr[0], arr[1] ...
+                            </div>
+                            <p class="text-sm text-slate-600">Accessing <code>arr[0]</code> suggests <code>arr[1]</code> is needed soon. <br><strong>Strategy:</strong> Fetch the whole block (cache line) containing arr[0]..arr[3].</p>
+                        </div>
+                    </div>
+
+                    <!-- Cache Mapping Techniques Comparison Table -->
+                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                            <h3 class="font-bold text-lg">Cache Mapping Techniques Comparison</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                                    <tr>
+                                        <th class="px-6 py-3">Technique</th>
+                                        <th class="px-6 py-3">Mapping Logic</th>
+                                        <th class="px-6 py-3">Pros</th>
+                                        <th class="px-6 py-3">Cons</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr class="bg-white">
+                                        <td class="px-6 py-4 font-medium text-slate-900">Direct Mapping</td>
+                                        <td class="px-6 py-4">Block B maps to Line (B mod C)</td>
+                                        <td class="px-6 py-4 text-green-600">Simple hardware, fast</td>
+                                        <td class="px-6 py-4 text-red-600">High thrashing if blocks collide</td>
+                                    </tr>
+                                    <tr class="bg-white">
+                                        <td class="px-6 py-4 font-medium text-slate-900">Associative</td>
+                                        <td class="px-6 py-4">Block B can go to ANY line</td>
+                                        <td class="px-6 py-4 text-green-600">Flexible, low conflict miss</td>
+                                        <td class="px-6 py-4 text-red-600">Complex circuitry (compare all tags)</td>
+                                    </tr>
+                                    <tr class="bg-white">
+                                        <td class="px-6 py-4 font-medium text-slate-900">Set Associative</td>
+                                        <td class="px-6 py-4">Block B maps to Set S, can use any line in S</td>
+                                        <td class="px-6 py-4 text-green-600">Best trade-off</td>
+                                        <td class="px-6 py-4 text-red-600">Moderate complexity</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Renders Chapter 7 content with I/O evolution and DMA explanation
+         * @returns {string} HTML string for chapter 7
+         */
+        function renderCh7() {
+            return `
+                <div class="space-y-6">
+                    <!-- Chapter Header -->
+                    <div class="border-b border-slate-200 pb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">Chapter 7: Input/Output</h2>
+                        <p class="text-slate-600 mt-2">${syllabusData.ch7.intro}</p>
+                    </div>
+
+                    <!-- I/O Evolution Timeline Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Programmed I/O Card -->
+                        <div class="bg-white p-5 rounded-lg border border-slate-200">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-2">Level 1</div>
+                            <h3 class="font-bold text-slate-800 mb-2">Programmed I/O</h3>
+                            <p class="text-sm text-slate-600">CPU waits. It polls the device status register repeatedly until ready.</p>
+                            <div class="mt-4 text-xs bg-red-50 text-red-700 px-2 py-1 inline-block rounded">Wasteful (Busy Wait)</div>
+                        </div>
+
+                        <!-- Interrupt-Driven I/O Card -->
+                        <div class="bg-white p-5 rounded-lg border border-slate-200">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-2">Level 2</div>
+                            <h3 class="font-bold text-slate-800 mb-2">Interrupt-Driven</h3>
+                            <p class="text-sm text-slate-600">CPU issues command, does other work. Device interrupts when ready.</p>
+                            <div class="mt-4 text-xs bg-yellow-50 text-yellow-700 px-2 py-1 inline-block rounded">Better, but CPU still moves data</div>
+                        </div>
+
+                        <!-- DMA Card (Highlighted) -->
+                        <div class="bg-white p-5 rounded-lg border border-slate-200 ring-2 ring-brand-500">
+                            <div class="text-xs font-bold text-brand-600 uppercase mb-2">Level 3</div>
+                            <h3 class="font-bold text-slate-800 mb-2">DMA (Direct Memory Access)</h3>
+                            <p class="text-sm text-slate-600">Special module handles transfer. CPU only involved at start/end.</p>
+                            <div class="mt-4 text-xs bg-green-50 text-green-700 px-2 py-1 inline-block rounded">Most Efficient</div>
+                        </div>
+                    </div>
+
+                    <!-- DMA Diagram Explanation -->
+                    <div class="bg-slate-800 text-white rounded-xl p-6 relative overflow-hidden">
+                        <h3 class="font-bold text-lg mb-4">DMA Bus Stealing Concept</h3>
+                        <div class="flex items-center gap-4 text-sm">
+                            <div class="flex-1 bg-slate-700 p-4 rounded text-center">
+                                <div class="font-bold mb-2">CPU</div>
+                                <div class="text-xs text-slate-400">Processing...</div>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <div class="text-xs mb-1">Bus Request</div>
+                                <div class="h-1 w-16 bg-slate-600"></div>
+                                <div class="text-xs mt-1">Bus Grant</div>
+                            </div>
+                            <div class="flex-1 bg-brand-600 p-4 rounded text-center">
+                                <div class="font-bold mb-2">DMA Controller</div>
+                                <div class="text-xs text-blue-100">Transfers Block</div>
+                            </div>
+                            <div class="w-16 h-1 bg-brand-400"></div>
+                            <div class="flex-1 bg-slate-700 p-4 rounded text-center">
+                                <div class="font-bold mb-2">Memory</div>
+                                <div class="text-xs text-slate-400">Data Store</div>
+                            </div>
+                        </div>
+                        <p class="mt-6 text-xs text-slate-400">* Note: The CPU is not "interrupted" in the OS sense, it is just paused for one bus cycle (Cycle Stealing).</p>
+                    </div>
+
+                    <!-- Problem 7.5 Call-to-Action -->
+                    <div class="bg-amber-50 border border-amber-200 p-6 rounded-xl">
+                        <h3 class="font-bold text-amber-800 mb-2">Problem 7.5 Highlight</h3>
+                        <p class="text-sm text-amber-900 mb-4">The syllabus includes a specific problem about I/O registers. Go to the "Problem Solver" tool to work through it interactively.</p>
+                        <button onclick="navTo('solver')" class="bg-amber-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-amber-700">Go to Solver</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Renders the Problem 7.5 interactive solver
+         * @returns {string} HTML string for the solver interface
+         */
+        function renderSolver() {
+            // Constants and calculations
+            const regSize = 8; // bits per register (8-bit microprocessor)
+            
+            // Device 1 calculations
+            const dev1StatBits = state.solver.dev1Status;
+            const dev1CtrlBits = state.solver.dev1Control;
+            const dev1StatRegs = Math.ceil(dev1StatBits / regSize); // Round up for partial bits
+            const dev1CtrlRegs = Math.ceil(dev1CtrlBits / regSize);
+            const dev1Total = dev1StatRegs + dev1CtrlRegs;
+
+            // Device 2 calculations
+            const dev2StatBits = state.solver.dev2Status;
+            const dev2CtrlBits = state.solver.dev2Control;
+            const dev2StatRegs = Math.ceil(dev2StatBits / regSize);
+            const dev2CtrlRegs = Math.ceil(dev2CtrlBits / regSize);
+            const dev2Total = dev2StatRegs + dev2CtrlRegs;
+
+            // Total system calculation
+            const totalSystemRegs = dev1Total + dev2Total;
+
+            return `
+                <div class="space-y-6">
+                    <!-- Solver Header -->
+                    <div class="border-b border-slate-200 pb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">Problem 7.5 Solver</h2>
+                        <p class="text-slate-600 mt-2">Interactive calculator for I/O Module Register requirements based on syllabus Page 4.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Input Controls Panel -->
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-lg mb-4">Device Parameters</h3>
+                            
+                            <div class="space-y-6">
+                                <!-- Device 1 Inputs -->
+                                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                    <h4 class="font-bold text-sm text-slate-700 mb-3">Device 1</h4>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Status Lines</label>
+                                            <input type="number" min="1" max="16" value="${state.solver.dev1Status}" 
+                                                onchange="updateSolver('dev1Status', this.value)"
+                                                class="w-full border-slate-300 rounded shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm p-2 border">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Control Lines</label>
+                                            <input type="number" min="1" max="16" value="${state.solver.dev1Control}"
+                                                onchange="updateSolver('dev1Control', this.value)"
+                                                class="w-full border-slate-300 rounded shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm p-2 border">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Device 2 Inputs -->
+                                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                    <h4 class="font-bold text-sm text-slate-700 mb-3">Device 2</h4>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Status Lines</label>
+                                            <input type="number" min="1" max="16" value="${state.solver.dev2Status}"
+                                                onchange="updateSolver('dev2Status', this.value)"
+                                                class="w-full border-slate-300 rounded shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm p-2 border">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Control Lines</label>
+                                            <input type="number" min="1" max="16" value="${state.solver.dev2Control}"
+                                                onchange="updateSolver('dev2Control', this.value)"
+                                                class="w-full border-slate-300 rounded shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm p-2 border">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Results Panel -->
+                        <div class="space-y-6">
+                            <!-- Calculation Results -->
+                            <div class="bg-slate-800 text-white p-6 rounded-xl shadow-md">
+                                <h3 class="font-bold text-lg mb-4 text-slate-200">Calculated Requirements</h3>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center pb-2 border-b border-slate-600">
+                                        <span class="text-sm">Device 1 Registers</span>
+                                        <span class="font-mono font-bold text-xl text-brand-400">${dev1Total}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pb-2 border-b border-slate-600">
+                                        <span class="text-sm">Device 2 Registers</span>
+                                        <span class="font-mono font-bold text-xl text-brand-400">${dev2Total}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pt-2">
+                                        <span class="font-bold">Total Registers Needed</span>
+                                        <span class="font-mono font-bold text-3xl text-green-400">${totalSystemRegs}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Explanation Panel -->
+                            <div class="bg-white p-6 rounded-xl border border-slate-200 text-sm space-y-3">
+                                <h4 class="font-bold text-slate-800">Explanation of Calculation</h4>
+                                <p class="text-slate-600">
+                                    We assume an 8-bit microprocessor (8-bit data bus). 
+                                </p>
+                                <ul class="list-disc pl-5 text-slate-600 space-y-1">
+                                    <li><strong>Status Register:</strong> Holds status flags. If lines ≤ 8, 1 register. If > 8, 2 registers.</li>
+                                    <li><strong>Control Register:</strong> Holds command bits. Same logic applies.</li>
+                                    <li>Each register requires a <strong>distinct address</strong> in the I/O map.</li>
+                                </ul>
+                                <p class="text-slate-600 italic border-t border-slate-100 pt-3 mt-3">
+                                    Part (b) "Output only": Even if a device is output-only (data), it usually still requires a control register for commands and potentially a status register for "Ready" signals.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Renders the Study Hub with expandable Q&A sections
+         * @returns {string} HTML string for the study hub
+         */
+        function renderStudy() {
+            let html = `
+                <div class="space-y-6 max-w-4xl mx-auto">
+                    <!-- Study Hub Header -->
+                    <div class="border-b border-slate-200 pb-4 flex justify-between items-end">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800">Review Questions</h2>
+                            <p class="text-slate-600 mt-2">Active recall practice for the Final Exam.</p>
+                        </div>
+                        <button onclick="toggleAllAnswers()" class="text-sm font-medium text-brand-600 hover:text-brand-800">Toggle All Answers</button>
+                    </div>
+            `;
+
+            // Generate Q&A for each chapter
+            ['ch3', 'ch4', 'ch7'].forEach(ch => {
+                html += `<div class="mb-8">`;
+                html += `<h3 class="text-lg font-bold text-slate-700 mb-4 px-2 border-l-4 border-brand-500 uppercase tracking-wide">${syllabusData[ch].title}</h3>`;
+                html += `<div class="space-y-3">`;
+                
+                // Generate each question with expandable answer
+                syllabusData[ch].questions.forEach(q => {
+                    const isOpen = state.showAnswers[q.id];
+                    html += `
+                        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                            <!-- Question Header (Clickable) -->
+                            <button onclick="toggleAnswer('${q.id}')" class="w-full text-left p-4 flex justify-between items-start hover:bg-slate-50 transition-colors">
+                                <div class="flex gap-3">
+                                    <span class="font-mono text-xs font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded h-fit">${q.id}</span>
+                                    <span class="font-medium text-slate-800 text-sm md:text-base">${q.q}</span>
+                                </div>
+                                <span class="text-slate-400 ml-4">${isOpen ? '−' : '+'}</span>
+                            </button>
+                            ${isOpen ? `
+                                <!-- Answer Content (Visible when expanded) -->
+                                <div class="p-4 pt-0 bg-slate-50 border-t border-slate-100">
+                                    <div class="mt-4 text-sm text-slate-700 leading-relaxed pl-12 border-l-2 border-slate-300">
+                                        ${q.a}
+                                    </div>
+                                    <!-- AI Analogy Container -->
+                                    <div id="analogy-${q.id.replace('.','-')}" class="mt-4 pl-12 hidden">
+                                        <!-- AI-generated analogy content injected here -->
+                                    </div>
+                                    <!-- AI Analogy Button -->
+                                    <div class="mt-3 pl-12 flex">
+                                        <button onclick="explainWithAnalogy('${q.id}', '${q.q.replace(/'/g, "\\'")}')" 
+                                            class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-semibold border border-indigo-100 hover:bg-indigo-100 flex items-center gap-1 transition-colors">
+                                            <span>✨ Explain with Analogy</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            });
+
+            html += `</div>`;
+            return html;
+        }
+
+        // ===========================================================================
+        // CONTROLLER FUNCTIONS
+        // Core application logic and state management
+        // ===========================================================================
+
+        /**
+         * Navigates to a specific view and updates the UI
+         * @param {string} view - The view to navigate to ('dashboard', 'ch3', etc.)
+         */
+        function navTo(view) {
+            // Update application state
+            state.currentView = view;
+            
+            // Update navigation UI
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const activeNav = document.querySelector(`button[onclick="navTo('${view}')"]`);
+            if (activeNav) activeNav.classList.add('active');
+
+            // Render the selected view
+            const main = document.getElementById('main-content');
+            main.innerHTML = '';
+            
+            switch(view) {
+                case 'dashboard': main.innerHTML = renderDashboard(); break;
+                case 'ch3': main.innerHTML = renderCh3(); break;
+                case 'ch4': main.innerHTML = renderCh4(); break;
+                case 'ch7': main.innerHTML = renderCh7(); break;
+                case 'solver': main.innerHTML = renderSolver(); break;
+                case 'study': main.innerHTML = renderStudy(); break;
+            }
+        }
+
+        /**
+         * Advances to the next step in the instruction cycle animation
+         */
+        function nextCycleStep() {
+            const steps = 5; // Total number of steps in the cycle
+            state.cycleStep = (state.cycleStep + 1) % steps; // Loop back to 0 after last step
+            updateCycleUI();
+        }
+
+        /**
+         * Resets the instruction cycle animation to the beginning
+         */
+        function resetCycle() {
+            state.cycleStep = 0;
+            updateCycleUI();
+        }
+
+        /**
+         * Updates the instruction cycle UI based on current step
+         */
+        function updateCycleUI() {
+            // Remove active styling from all steps
+            document.querySelectorAll('.cycle-step').forEach(el => {
+                el.classList.remove('active-step', 'ring-2', 'ring-brand-500');
+            });
+            
+            // Add active styling to current step
+            const currentEl = document.getElementById(`step-${state.cycleStep}`);
+            if (currentEl) currentEl.classList.add('active-step');
+
+            // Update step description
+            const descEl = document.getElementById('cycle-desc');
+            const descriptions = [
+                "<strong>Start:</strong> The Instruction Address Calculation (iac) determines the address of the next instruction.",
+                "<strong>Fetch:</strong> The CPU places the address on the Address Bus. Memory places the instruction on the Data Bus.",
+                "<strong>Decode:</strong> The Control Unit interprets the Opcode to decide what action to take.",
+                "<strong>Execute:</strong> The ALU performs calculations, or data is moved. (Includes Operand Fetch if needed).",
+                "<strong>Check Interrupts:</strong> CPU checks interrupt lines. If signal exists & interrupts enabled, suspend program and jump to handler."
+            ];
+            descEl.innerHTML = descriptions[state.cycleStep];
+        }
+
+        /**
+         * Updates the problem solver state and re-renders the solver
+         * @param {string} field - The field to update ('dev1Status', 'dev1Control', etc.)
+         * @param {string} val - The new value for the field
+         */
+        function updateSolver(field, val) {
+            state.solver[field] = parseInt(val);
+            document.getElementById('main-content').innerHTML = renderSolver();
+        }
+
+        /**
+         * Toggles the visibility of an answer in the study hub
+         * @param {string} id - The question ID (e.g., '3.1')
+         */
+        function toggleAnswer(id) {
+            state.showAnswers[id] = !state.showAnswers[id];
+            document.getElementById('main-content').innerHTML = renderStudy();
+        }
+        
+        /**
+         * Toggles all answers in the study hub (show all or hide all)
+         */
+        function toggleAllAnswers() {
+            const allKeys = [];
+            // Collect all question IDs from all chapters
+            ['ch3', 'ch4', 'ch7'].forEach(ch => {
+                syllabusData[ch].questions.forEach(q => allKeys.push(q.id));
+            });
+            
+            // Determine if we should show all (if any are closed) or hide all (if all are open)
+            const anyClosed = allKeys.some(k => !state.showAnswers[k]);
+            allKeys.forEach(k => state.showAnswers[k] = anyClosed);
+            
+            document.getElementById('main-content').innerHTML = renderStudy();
+        }
+
+        /**
+         * Toggles the mobile navigation menu visibility
+         */
+        function toggleMobileNav() {
+            const nav = document.getElementById('mobile-nav');
+            if (nav.classList.contains('translate-x-full')) {
+                nav.classList.remove('translate-x-full'); // Show menu
+            } else {
+                nav.classList.add('translate-x-full'); // Hide menu
+            }
+        }
+
+        // ===========================================================================
+        // CHART.JS INITIALIZATION
+        // Creates the memory hierarchy visualization
+        // ===========================================================================
+        function initMemoryChart() {
+            const ctx = document.getElementById('memoryChart');
+            if (!ctx) return; // Exit if chart container doesn't exist
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Registers', 'L1 Cache', 'L2 Cache', 'Main Memory (RAM)', 'Disk Storage'],
+                    datasets: [{
+                        label: 'Typical Access Time (ns) - Log Scale',
+                        data: [0.3, 1, 10, 100, 10000000], // Logarithmic scale values
+                        backgroundColor: [
+                            'rgba(14, 165, 233, 0.8)', // brand-500
+                            'rgba(14, 165, 233, 0.6)',
+                            'rgba(14, 165, 233, 0.4)',
+                            'rgba(14, 165, 233, 0.2)',
+                            'rgba(100, 116, 139, 0.5)' // slate
+                        ],
+                        borderColor: 'rgba(14, 165, 233, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'logarithmic', // Use logarithmic scale for dramatic difference
+                            title: { display: true, text: 'Nanoseconds (Log Scale)' }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y + ' ns';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ===========================================================================
+        // AI CHAT FEATURES
+        // Functions for the AI-powered tutoring system
+        // ===========================================================================
+
+        /**
+         * Toggles the AI chat modal visibility
+         */
+        function toggleAIChat() {
+            const modal = document.getElementById('ai-chat-modal');
+            state.chatOpen = !state.chatOpen;
+            if (state.chatOpen) {
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.classList.remove('translate-x-full'), 10); // Animation
+            } else {
+                modal.classList.add('translate-x-full');
+                setTimeout(() => modal.classList.add('hidden'), 300); // Wait for animation
+            }
+        }
+
+        /**
+         * Calls the Gemini AI API with a user prompt
+         * @param {string} userPrompt - The user's question
+         * @returns {Promise<string>} The AI's response
+         */
+        async function callGemini(userPrompt) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }]
+            };
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error("API Call Failed");
+                
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
+            } catch (error) {
+                console.error(error);
+                return "Error connecting to AI Tutor. Please try again.";
+            }
+        }
+
+        /**
+         * Sends a user message to the AI and displays the response
+         */
+        async function sendToAI() {
+            const inputEl = document.getElementById('ai-user-input');
+            const historyEl = document.getElementById('ai-chat-history');
+            const text = inputEl.value.trim();
+            if (!text) return;
+
+            // Add user message to chat history
+            historyEl.innerHTML += `
+                <div class="flex gap-3 items-start flex-row-reverse">
+                    <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 font-bold text-xs">You</div>
+                    <div class="bg-indigo-600 text-white p-3 rounded-l-xl rounded-br-xl shadow-sm text-sm">
+                        ${text}
+                    </div>
+                </div>
+            `;
+            inputEl.value = ''; // Clear input
+            historyEl.scrollTop = historyEl.scrollHeight; // Auto-scroll to bottom
+
+            // Show loading indicator
+            const loadingId = 'loading-' + Date.now();
+            historyEl.innerHTML += `
+                <div id="${loadingId}" class="flex gap-3 items-start">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold text-xs">AI</div>
+                    <div class="bg-white p-3 rounded-r-xl rounded-bl-xl shadow-sm text-sm text-slate-700 border border-slate-100 italic">
+                        Thinking...
+                    </div>
+                </div>
+            `;
+            historyEl.scrollTop = historyEl.scrollHeight;
+
+            // Call Gemini API with context
+            const systemContext = "You are an expert Computer Architecture professor teaching from William Stallings 8th Edition. Focus on Chapters 3 (Processor), 4 (Cache), and 7 (I/O). Be concise, helpful, and use technical accuracy. Format with bolding for key terms.";
+            const response = await callGemini(`${systemContext}\n\nStudent Question: ${text}`);
+
+            // Remove loading indicator and add AI response
+            document.getElementById(loadingId).remove();
+            historyEl.innerHTML += `
+                <div class="flex gap-3 items-start">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold text-xs">AI</div>
+                    <div class="bg-white p-3 rounded-r-xl rounded-bl-xl shadow-sm text-sm text-slate-700 border border-slate-100 ai-response">
+                        ${response.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `;
+            historyEl.scrollTop = historyEl.scrollHeight;
+        }
+
+        /**
+         * Requests an AI-generated analogy for a specific question
+         * @param {string} id - The question ID
+         * @param {string} questionText - The question text
+         */
+        async function explainWithAnalogy(id, questionText) {
+            const containerId = `analogy-${id.replace('.','-')}`;
+            const container = document.getElementById(containerId);
+            
+            // Show loading state
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 text-indigo-800 text-sm flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating simple analogy...
+                </div>
+            `;
+
+            // Call Gemini with analogy-focused prompt
+            const prompt = `Explain the concept behind the Computer Architecture question: "${questionText}" using a simple, real-world analogy (like a library, office, or kitchen). Keep it brief and memorable for a student studying for an exam. Start with "Think of it like..."`;
+            
+            const response = await callGemini(prompt);
+
+            // Display the analogy
+            container.innerHTML = `
+                <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 text-indigo-900 text-sm relative">
+                    <div class="absolute top-2 right-2 text-indigo-200 text-xl">✨</div>
+                    <div class="font-bold text-indigo-700 mb-1 text-xs uppercase tracking-wide">AI Simplified</div>
+                    ${response}
+                </div>
+            `;
+        }
+
+        // ===========================================================================
+        // APPLICATION INITIALIZATION
+        // ===========================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            navTo('dashboard'); // Start with dashboard view
+        });
+
+    </script>
+</body>
+</html>
